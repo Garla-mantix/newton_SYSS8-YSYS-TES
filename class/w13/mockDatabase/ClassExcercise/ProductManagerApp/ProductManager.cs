@@ -20,11 +20,12 @@ public class ProductManager
     public List<Product> GetProductsByCategory(string category)
     {
         var products = new List<Product>();
+        var filteredProducts = new List<Product>();
 
         _connection.Open();
 
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, category, price FROM products WHERE category = @category::product_category";
+        cmd.CommandText = "SELECT id, name, category, price FROM products";
         
         var param = cmd.CreateParameter();
         param.ParameterName = "@category";
@@ -43,6 +44,14 @@ public class ProductManager
             });
         }
 
-        return products;
+        foreach (var product in products)
+        {
+            if (product.Category == category)
+            {
+                filteredProducts.Add(product);
+            }
+        }
+
+        return filteredProducts;
     }
 }

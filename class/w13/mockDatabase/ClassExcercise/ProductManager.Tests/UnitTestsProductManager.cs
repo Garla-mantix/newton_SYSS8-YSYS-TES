@@ -2,6 +2,7 @@ namespace ProductManager.Tests;
 
 using ProductManagerApp;
 using System.Data;
+using System.Linq;
 using Moq;
 
 [TestClass]
@@ -17,13 +18,20 @@ public class UnitTestsProductManager
         var mockParams     = new Mock<IDataParameterCollection>();
         var mockParam      = new Mock<IDbDataParameter>();
         var mockReader     = new Mock<IDataReader>();
+        
+        var products = new List<(int Id, string Name, string Category, decimal Price)>
+        {
+            (1, "TEST_Android Galaxy 15", "Tech", 999.99m),
+            (2, "TEST_iPhone 15",         "Tech", 799.99m),
+            (3, "TEST_Margherita Pizza",  "Food",  12.99m)
+        };
 
         var readCallCount = 0;
-        mockReader.Setup(r => r.Read()).Returns(() => readCallCount++ == 0);
-        mockReader.Setup(r => r.GetInt32(0)).Returns(1);
-        mockReader.Setup(r => r.GetString(1)).Returns("TEST_Android Galaxy 15");
-        mockReader.Setup(r => r.GetString(2)).Returns("Tech");
-        mockReader.Setup(r => r.GetDecimal(3)).Returns(999.99m);
+        mockReader.Setup(r => r.Read()).Returns(() => readCallCount++ < products.Count);
+        mockReader.Setup(r => r.GetInt32(0)).Returns(() => products[readCallCount - 1].Id);
+        mockReader.Setup(r => r.GetString(1)).Returns(() => products[readCallCount - 1].Name);
+        mockReader.Setup(r => r.GetString(2)).Returns(() => products[readCallCount - 1].Category);
+        mockReader.Setup(r => r.GetDecimal(3)).Returns(() => products[readCallCount - 1].Price);
 
         mockCommand.Setup(c => c.ExecuteReader()).Returns(mockReader.Object);
         mockCommand.Setup(c => c.CreateParameter()).Returns(mockParam.Object);
@@ -36,8 +44,10 @@ public class UnitTestsProductManager
         var results = productManager.GetProductsByCategory("Tech");
 
         // Assert
-        Assert.AreEqual(1, results.Count);
-        Assert.AreEqual("Tech", results[0].Category);
-        Assert.AreEqual("TEST_Android Galaxy 15", results[0].Name);
+        Assert.AreEqual(2, results.Count);
+        Assert.IsTrue(results.All(p => p.Category == "Tech"));
+        Assert.IsTrue(results.Any(p => p.Name == "TEST_Android Galaxy 15"));
+        Assert.IsTrue(results.Any(p => p.Name == "TEST_iPhone 15"));
+        Assert.IsFalse(results.Any(p => p.Name == "TEST_Margherita Pizza"));
     }
 }
