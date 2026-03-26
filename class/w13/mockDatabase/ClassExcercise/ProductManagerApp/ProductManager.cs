@@ -1,22 +1,35 @@
 namespace ProductManagerApp;
 
 using Npgsql;
+using System.Data;
 
 public class ProductManager
 {
-    private const string ConnectionString = 
-        "Host=localhost;Port=5431;Username=postgres;Password=mysecretpassword;Database=postgres";
+    private readonly IDbConnection _connection;
+
+    public ProductManager(IDbConnection connection)
+    {
+        _connection = connection;
+    }
+
+    public ProductManager() 
+        : this(new NpgsqlConnection("Host=localhost;Port=5431;Username=postgres;Password=mysecretpassword;Database=postgres"))
+    {
+    }
 
     public List<Product> GetProductsByCategory(string category)
     {
         var products = new List<Product>();
 
-        using var connection = new NpgsqlConnection(ConnectionString);
-        connection.Open();
+        _connection.Open();
 
-        using var cmd = connection.CreateCommand();
+        using var cmd = _connection.CreateCommand();
         cmd.CommandText = "SELECT id, name, category, price FROM products WHERE category = @category::product_category";
-        cmd.Parameters.AddWithValue("@category", category);
+        
+        var param = cmd.CreateParameter();
+        param.ParameterName = "@category";
+        param.Value = category;
+        cmd.Parameters.Add(param);
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
@@ -31,19 +44,5 @@ public class ProductManager
         }
 
         return products;
-    }
-
-    public void InsertProduct(Product product)
-    {
-        using var connection = new NpgsqlConnection(ConnectionString);
-        connection.Open();
-
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO products (name, category, price) VALUES (@name, @category::product_category, @price)";
-        cmd.Parameters.AddWithValue("@name",     product.Name);
-        cmd.Parameters.AddWithValue("@category", product.Category);
-        cmd.Parameters.AddWithValue("@price",    product.Price);
-
-        cmd.ExecuteNonQuery();
     }
 }
