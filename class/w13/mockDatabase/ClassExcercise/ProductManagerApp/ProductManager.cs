@@ -23,25 +23,26 @@ public class ProductManager
         var filteredProducts = new List<Product>();
 
         _connection.Open();
-
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, category, price FROM products";
-        
-        var param = cmd.CreateParameter();
-        param.ParameterName = "@category";
-        param.Value = category;
-        cmd.Parameters.Add(param);
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        try
         {
-            products.Add(new Product
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT id, name, category, price FROM products";
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                Id       = reader.GetInt32(0),
-                Name     = reader.GetString(1),
-                Category = reader.GetString(2),
-                Price    = reader.GetDecimal(3)
-            });
+                products.Add(new Product
+                {
+                    Id       = reader.GetInt32(0),
+                    Name     = reader.GetString(1),
+                    Category = reader.GetString(2),
+                    Price    = reader.GetDecimal(3)
+                });
+            }
+        }
+        finally
+        {
+            _connection.Close();
         }
 
         foreach (var product in products)
